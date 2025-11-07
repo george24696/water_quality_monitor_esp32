@@ -16,7 +16,7 @@ Before building and uploading the firmware you must add your network and Firebas
 
 ```cpp
 // Network and Firebase credentials (adjust as needed)
-#define WIFI_SSID "wif_name"
+#define WIFI_SSID "wifi_name"
 #define WIFI_PASSWORD "wifi_password"
 #define Web_API_KEY "your_web_api_key"
 #define DATABASE_URL "your_database_url"
