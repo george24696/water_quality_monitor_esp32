@@ -12,7 +12,7 @@ The table below shows a list of the specific sensor I used when working on this 
 
 ## Credentials
 
-Before building and uploading the firmware you must add your network and Firebase credentials so the device can connect to WiFi and your Firebase Realtime Database. Edit the credentials in the project's source (where these macros are used) and replace the example values with your own:
+Before building and uploading the firmware you must add your network and Firebase credentials so the device can connect to WiFi and your Firebase Realtime Database. Edit the credentials in the project's source (src/main.cpp) and replace the example values with your own:
 
 ```cpp
 // Network and Firebase credentials (adjust as needed)
