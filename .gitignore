@@ -5,4 +5,5 @@
 .vscode/ipch
 
 
-secret_keys.txt
+secret_keys/
+website_dashboard/firebase-config.js

@@ -194,10 +194,10 @@ void loop(){
   Serial.printf("pH=%.2f (%.0f mV), EC=%.3f ms/cm, turb=%.1f NTU, temp=%.2f C\n", phValue, voltagePH, ecValue, turbidityNTU, tempC);
 
   // Write readings to Firebase
-  Database.set<float>(aClient, "/readings/ph", phValue);
-  Database.set<float>(aClient, "/readings/ec", ecValue);
-  Database.set<float>(aClient, "/readings/turbidity", turbidityNTU);
-  if (tempC != -1000.0f) Database.set<float>(aClient, "/readings/temperature", tempC);
+  Database.set<float>(aClient, "/readings/ph", phValue);  // Range: 0-14 pH
+  Database.set<float>(aClient, "/readings/ec", ecValue);  // Range: 0-2000 μS/cm
+  Database.set<float>(aClient, "/readings/turbidity", turbidityNTU); // Range: 0-1000 NTU
+  if (tempC != -1000.0f) Database.set<float>(aClient, "/readings/temperature", tempC); // Range: 0-30 °C
   Database.set<int32_t>(aClient, "/readings/timestamp", (int32_t)now);
 
   // Check pump state from DB and actuate if requested

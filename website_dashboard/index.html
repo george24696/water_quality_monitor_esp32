@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Water Management Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f9fafb;
+      color: #111827;
+    }
+    /* Status pulse */
+    .status-light { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+
+    /* Chart overlay text */
+    .chart-container { position: relative; }
+    .chart-text {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="flex h-screen">
+
+  <nav class="w-20 bg-white border-r border-gray-200 shadow-sm flex flex-col items-center py-4 space-y-6">
+    <div class="flex items-center justify-center text-blue-600 font-bold text-lg" aria-label="DevsBot">
+      <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    </div>
+
+    <div class="flex flex-col space-y-6 items-center">
+      <button class="p-2 bg-blue-100 text-blue-600 rounded-lg" aria-label="Dashboard">
+        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <div class="flex flex-col space-y-6 items-center mt-auto">
+
+      <button class="p-2 text-gray-500 hover:text-blue-600 rounded-lg" aria-label="Help">
+        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <div class="flex-1 flex flex-col overflow-y-auto min-h-0">
+    <header class="bg-white border-b border-gray-200 shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+      <div class="flex items-center space-x-4">
+        <button class="text-gray-600 md:hidden" aria-label="Open menu">
+          <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+          </svg>
+        </button>
+        <h1 class="text-xl font-semibold text-gray-800">Water Quality Monitor And Microbial Sampler</h1>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <button class="text-gray-500 hover:text-gray-800" aria-label="Notifications">
+          <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+          </svg>
+        </button>
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">U</div>
+          <span class="text-sm font-medium text-gray-700">Welcome User</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="p-6 space-y-6">
+
+      <div class="flex justify-center">
+        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex items-center space-x-4 lg:max-w-xs">
+          <div class="p-3 rounded-lg bg-blue-100 text-blue-600">
+            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 21v-1.5M12 3.75V3m0 18v-1.5M12 8.25v7.5M15.75 3v1.5m0 15v1.5M19.5 8.25H21m-18 0h1.5M19.5 12H21m-18 0h1.5m15 3.75H21m-18 0h1.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span id="system-status-light" class="w-3 h-3 bg-gray-400 rounded-full"></span>
+              <span id="system-status-text" class="font-semibold text-gray-800">Connecting...</span>
+            </div>
+            <p class="text-sm text-gray-500">ID: 979092</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
+          <div class="relative w-28 h-28">
+            <canvas id="tempDoughnut" class="absolute inset-0"></canvas>
+            <div class="chart-text">
+              <span id="temp-value" class="text-3xl font-bold text-gray-900">--</span>
+              <span class="text-sm text-gray-500">°C</span>
+            </div>
+          </div>
+          <p class="mt-2 text-sm font-medium text-gray-600">Temperature</p>
+          <p class="mt-1 text-xs text-gray-500">Range: 0-30 °C</p>
+          <div class="w-full h-40 mt-4">
+            <canvas id="tempLine"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
+          <div class="relative w-28 h-28">
+            <canvas id="turbDoughnut" class="absolute inset-0"></canvas>
+            <div class="chart-text">
+              <span id="turb-value" class="text-3xl font-bold text-gray-900">--</span>
+              <span class="text-sm text-gray-500">NTU</span>
+            </div>
+          </div>
+          <p class="mt-2 text-sm font-medium text-gray-600">Turbidity</p>
+          <p class="mt-1 text-xs text-gray-500">Range: 0-1000 NTU</p>
+          <div class="w-full h-40 mt-4">
+            <canvas id="turbLine"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
+          <div class="relative w-28 h-28">
+            <canvas id="ecDoughnut" class="absolute inset-0"></canvas>
+            <div class="chart-text">
+              <span id="ec-value" class="text-3xl font-bold text-gray-900">--</span>
+              <span class="text-sm text-gray-500">μS/cm</span>
+            </div>
+          </div>
+          <p class="mt-2 text-sm font-medium text-gray-600">Electrical Conductivity</p>
+          <p class="mt-1 text-xs text-gray-500">Range: 0-2000 μS/cm</p>
+          <div class="w-full h-40 mt-4">
+            <canvas id="ecLine"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
+          <div class="relative w-28 h-28">
+            <canvas id="phDoughnut" class="absolute inset-0"></canvas>
+            <div class="chart-text">
+              <span id="ph-value" class="text-3xl font-bold text-gray-900">--</span>
+              <span class="text-sm text-gray-500">pH</span>
+            </div>
+          </div>
+          <p class="mt-2 text-sm font-medium text-gray-600">pH</p>
+          <p class="mt-1 text-xs text-gray-500">Range: 0-14 pH</p>
+          <div class="w-full h-40 mt-4">
+            <canvas id="phLine"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pt-4 flex justify-center">
+        <button id="pump-button" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg text-base shadow-sm transition-colors duration-200">
+          Start Sampling
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="firebase-config.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+      // Firebase configuration is loaded from `firebase-config.js`.
+      // Make sure that file is present and added to .gitignore.
+      if (typeof window.appConfig === 'undefined') {
+        console.error('Missing firebase config (window.appConfig). Ensure firebase-config.js is loaded and gitignored.');
+        var st = document.getElementById('system-status-text');
+        if (st) st.textContent = 'Config Error';
+        var sl = document.getElementById('system-status-light');
+        if (sl) sl.classList.add('bg-red-500');
+        return;
+      }
+
+      // Initialize Firebase
+      try {
+        firebase.initializeApp(appConfig.firebaseConfig);
+      } catch (e) {
+        console.error("Firebase initialization error:", e);
+        document.getElementById('system-status-text').textContent = 'Config Error';
+        document.getElementById('system-status-light').classList.add('bg-red-500');
+        return;
+      }
+
+      var auth = firebase.auth();
+      var db = firebase.database();
+
+      // Chart instances
+      var tempDoughnut, turbDoughnut, ecDoughnut, phDoughnut;
+      var tempLine, turbLine, ecLine, phLine;
+
+      // Helpers
+      function createDoughnutChart(id, color) {
+        var ctx = document.getElementById(id).getContext('2d');
+        return new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            datasets: [{
+              data: [0, 100],
+              backgroundColor: [color, '#e5e7eb'],
+              borderWidth: 0,
+              borderRadius: 5
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '80%',
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            events: []
+          }
+        });
+      }
+
+    function updateDoughnutChart(chart, value, valueElId, min, max) {
+        var raw = parseFloat(value);
+        var val = Number.isFinite(raw) ? raw : 0;
+        var percentage = ((val - min) / (max - min)) * 100;
+        percentage = Math.max(0, Math.min(100, percentage));
+        chart.data.datasets[0].data = [percentage, 100 - percentage];
+        chart.update();
+
+        var formatted;
+        if (valueElId === 'ec-value' || valueElId === 'turb-value') {
+            formatted = Math.round(val).toString();
+        } else if (valueElId === 'temp-value') {
+            formatted = val.toFixed(1);
+        } else {
+            formatted = val.toFixed(2);
+        }
+
+        document.getElementById(valueElId).textContent = formatted;
+    }
+
+      function createLineChart(id, color) {
+        var ctx = document.getElementById(id).getContext('2d');
+        return new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [{
+              data: [],
+              borderColor: color,
+              borderWidth: 2,
+              fill: false,
+              tension: 0.4,
+              pointRadius: 2,
+              pointBackgroundColor: color
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            scales: {
+              y: { display: true, beginAtZero: false },
+              x: { display: true }
+            }
+          }
+        });
+      }
+
+      function updateLineChart(chart, labels, data) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update();
+      }
+
+      // Init charts
+      tempDoughnut = createDoughnutChart('tempDoughnut', '#3b82f6');
+      turbDoughnut = createDoughnutChart('turbDoughnut', '#a855f7');
+      ecDoughnut = createDoughnutChart('ecDoughnut', '#ec4899');
+      phDoughnut = createDoughnutChart('phDoughnut', '#f97316');
+
+      tempLine = createLineChart('tempLine', '#3b82f6');
+      turbLine = createLineChart('turbLine', '#a855f7');
+      ecLine = createLineChart('ecLine', '#ec4899');
+      phLine = createLineChart('phLine', '#f97316');
+
+      // Firebase sign in and listeners
+      auth.signInWithEmailAndPassword(appConfig.userEmail, appConfig.userPassword)
+        .then(function (userCredential) {
+          console.log("Firebase Authentication successful.", userCredential.user);
+
+          document.getElementById('system-status-text').textContent = 'System Online';
+          var statusLight = document.getElementById('system-status-light');
+          statusLight.classList.remove('bg-gray-400');
+          statusLight.classList.add('bg-green-500', 'status-light');
+
+          var readingsRef = db.ref('readings').orderByKey().limitToLast(9);
+
+          readingsRef.on('value', function (snapshot) {
+            var data = snapshot.val();
+            if (!data) {
+              console.warn("No data found in 'readings' node.");
+              return;
+            }
+
+            var allReadings = Object.values(data);
+            var latestReading = allReadings[allReadings.length - 1];
+            var labels = Object.keys(data).map(function (ts) {
+              return new Date(parseInt(ts, 10)).toLocaleTimeString();
+            });
+
+            var tempData = allReadings.map(function (r) { return r.temperature; });
+            var turbData = allReadings.map(function (r) { return r.turbidity; });
+            var ecData = allReadings.map(function (r) { return r.ec; });
+            var phData = allReadings.map(function (r) { return r.ph; });
+
+            updateDoughnutChart(tempDoughnut, latestReading.temperature, 'temp-value', 0, 30);
+            updateDoughnutChart(turbDoughnut, latestReading.turbidity, 'turb-value', 0, 1000);
+            updateDoughnutChart(ecDoughnut, latestReading.ec, 'ec-value', 0, 2000);
+            updateDoughnutChart(phDoughnut, latestReading.ph, 'ph-value', 0, 14);
+
+            updateLineChart(tempLine, labels, tempData);
+            updateLineChart(turbLine, labels, turbData);
+            updateLineChart(ecLine, labels, ecData);
+            updateLineChart(phLine, labels, phData);
+          }, function (error) {
+            console.error("Error fetching readings:", error);
+            document.getElementById('system-status-text').textContent = 'Data Read Error';
+            document.getElementById('system-status-light').classList.add('bg-red-500');
+          });
+
+          var pumpButton = document.getElementById('pump-button');
+          var pumpRef = db.ref('pump');
+
+          pumpRef.on('value', function (snapshot) {
+            var isPumpOn = snapshot.val();
+            pumpButton.textContent = isPumpOn ? 'Stop Sampling' : 'Start Sampling';
+            pumpButton.classList.toggle('bg-red-600', isPumpOn);
+            pumpButton.classList.toggle('hover:bg-red-700', isPumpOn);
+            pumpButton.classList.toggle('bg-blue-600', !isPumpOn);
+            pumpButton.classList.toggle('hover:bg-blue-700', !isPumpOn);
+          });
+
+          pumpButton.addEventListener('click', function () {
+            pumpRef.get().then(function (snapshot) {
+              var currentStatus = snapshot.val();
+              pumpRef.set(!currentStatus);
+            });
+          });
+
+        })
+        .catch(function (error) {
+          console.error("Firebase Authentication failed:", error.code, error.message);
+          document.getElementById('system-status-text').textContent = 'Auth Failed';
+          var statusLight = document.getElementById('system-status-light');
+          statusLight.classList.remove('bg-gray-400');
+          statusLight.classList.add('bg-red-500');
+        });
+
+    });
+  </script>
+</body>
+</html>
